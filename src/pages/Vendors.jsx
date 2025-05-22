@@ -3,26 +3,42 @@ import { Modal, Button, Spinner, Table, Form } from 'react-bootstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Vendors = () => {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingVendor, setEditingVendor] = useState(null);
   const [deletingVendor, setDeletingVendor] = useState(null);
+  const [token] = useState(localStorage.getItem('adminToken'));
+
+  const fetchVendors = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/vendors`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized - Please login again');
+        }
+        throw new Error('Failed to fetch vendors');
+      }
+      
+      const data = await response.json();
+      setVendors(data);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+      toast.error(err.message);
+    }
+  };
 
   useEffect(() => {
-    const fetchVendors = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/vendors');
-        if (!response.ok) throw new Error('Failed to fetch vendors');
-        const data = await response.json();
-        setVendors(data);
-        setLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
-      }
-    };
     fetchVendors();
   }, []);
 
@@ -33,60 +49,77 @@ const Vendors = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/vendors/${updatedVendor._id}/details`, {
+      const response = await fetch(`${API_URL}/api/admin/vendors/${updatedVendor._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(updatedVendor),
       });
 
-      if (!response.ok) throw new Error("Update failed");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Update failed");
+      }
 
       const data = await response.json();
       setVendors(vendors.map(v => v._id === data._id ? data : v));
       toast.success("Vendor updated successfully!");
       setEditingVendor(null);
     } catch (err) {
-      toast.error("Error updating vendor.");
-      console.error('Error updating vendor:', err);
+      toast.error(err.message);
+      console.error('Update error:', err);
     }
   };
 
   const toggleApproval = async (id, newStatus) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/vendors/${id}/approval`, {
+      const response = await fetch(`${API_URL}/api/admin/vendors/${id}/approval`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ isApproved: newStatus }),
       });
 
-      if (!response.ok) throw new Error("Approval failed");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Approval update failed");
+      }
 
       const data = await response.json();
       setVendors(vendors.map(v => v._id === id ? data : v));
       toast.success(`Vendor ${newStatus ? "approved" : "revoked"} successfully!`);
     } catch (err) {
-      toast.error("Error updating approval status.");
-      console.error('Error updating approval:', err);
+      toast.error(err.message);
+      console.error('Approval error:', err);
     }
   };
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/vendors/${deletingVendor._id}`, {
+      const response = await fetch(`${API_URL}/api/admin/vendors/${deletingVendor._id}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
-      if (!response.ok) throw new Error("Delete failed");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Delete failed");
+      }
 
       setVendors(vendors.filter(v => v._id !== deletingVendor._id));
       toast.success("Vendor deleted successfully!");
       setDeletingVendor(null);
     } catch (err) {
-      toast.error("Error deleting vendor.");
-      console.error('Error deleting vendor:', err);
+      toast.error(err.message);
+      console.error('Delete error:', err);
     }
   };
-
   if (loading) return <div className="p-4"><Spinner animation="border" variant="primary" /> Loading...</div>;
   if (error) return <div className="p-4 text-danger">Error: {error}</div>;
 

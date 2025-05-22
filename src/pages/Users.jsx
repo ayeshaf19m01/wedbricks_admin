@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container, Table, Button, Form, Row, Col, Spinner, Alert } from "react-bootstrap";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -10,7 +11,7 @@ const UserList = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/userslist");
+        const res = await fetch(`${API_URL}/api/userslist`);
         if (!res.ok) throw new Error("Failed to fetch users");
         const data = await res.json();
         setUsers(data);
